@@ -27,5 +27,5 @@ automation-lab/
 
 ## Autor
 
-**Tu Nombre** — Network Engineer | Cisco ACI Specialist  
+**Alfonso Cornejo** — Network Engineer | Cisco ACI Specialist  
 Iniciado: Marzo 2026
