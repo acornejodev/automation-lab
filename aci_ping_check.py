@@ -126,7 +126,8 @@ if __name__ == "__main__":
         "192.168.1.1",    # Tu gateway local — puede variar según tu red
         "10.0.0.1",       # IP ficticia de APIC-1 — no existe (FAIL esperado)
         "10.0.0.2",       # IP ficticia de APIC-2 — no existe (FAIL esperado)
-        "172.16.0.1",     # Spine-1 (ficticio) 
+        "172.16.0.1",     # Spine-1 (ficticio)
+        "172.16.0.2",     # Spine-2 (ficticio)
     ]
 
     # Llamamos a la función principal con nuestra lista
