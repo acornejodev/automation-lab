@@ -1,0 +1,32 @@
+# ── Entornos virtuales de Python ──────────────────────────────────────────────
+# Cuando creas un venv, genera cientos de archivos que NO deben ir al repo.
+# Cada persona instala sus propias dependencias en su propia máquina.
+.venv/
+venv/
+env/
+
+# ── Credenciales y secretos ───────────────────────────────────────────────────
+# NUNCA subas contraseñas, tokens de API o claves privadas a GitHub.
+# Aunque el repo sea privado, es mala práctica y un riesgo de seguridad.
+.env
+secrets.yaml
+credentials.yaml
+*.key
+*.pem
+
+# ── Caché de Python ───────────────────────────────────────────────────────────
+# Python genera estos archivos automáticamente al ejecutar scripts.
+# No tienen valor en el repo — se regeneran solos.
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Archivos del sistema operativo ────────────────────────────────────────────
+Thumbs.db        # Windows: thumbnails del explorador de archivos
+desktop.ini      # Windows: configuración de carpetas
+*.lnk            # Windows: accesos directos
+
+# ── Archivos de VS Code ───────────────────────────────────────────────────────
+# Opcional: algunos prefieren NO ignorarlos para compartir configuración.
+# Para este portafolio personal los ignoramos.
+.vscode/
