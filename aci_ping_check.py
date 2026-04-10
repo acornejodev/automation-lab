@@ -102,6 +102,7 @@ def verificar_dispositivos(dispositivos: list) -> None:
     """
     print("\n" + "=" * 60)
     print("  ACI Check — Conectividad de infraestructura Cisco")
+    print("  ACI Infrastructure Check v2.0 — Estado de dispositivos")
     print("=" * 60)
 
     alcanzables = 0
