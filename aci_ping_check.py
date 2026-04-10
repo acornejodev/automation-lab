@@ -101,7 +101,7 @@ def verificar_dispositivos(dispositivos: list) -> None:
     Recibe lista de dicts {'nombre': ..., 'ip': ...} y verifica cada uno.
     """
     print("\n" + "=" * 60)
-    print("  ACI Infrastructure Check — Verificación de conectividad")
+    print("  ACI Infrastructure Check v2.0 — Estado de dispositivos")
     print("=" * 60)
 
     alcanzables = 0
