@@ -1,0 +1,25 @@
+# dispositivos.yaml
+# Archivo de configuración para el script de verificación ACI.
+# Este archivo contiene DATOS, no lógica.
+# Se puede modificar sin tocar el código Python.
+
+# 'aci_infrastructure' es una clave YAML que agrupa los dispositivos.
+# Los guiones (-) indican una lista en YAML.
+aci_infrastructure:
+
+  # Categoría: controladores APIC
+  # En un entorno real serían las IPs de tus 3 APICs
+  apics:
+    - nombre: "APIC-1 (Sandbox)"
+      ip: "10.10.20.14"       # IP del APIC en DevNet Sandbox
+    - nombre: "APIC-2"
+      ip: "10.0.0.2"          # Ficticio — esperamos FAIL
+    - nombre: "APIC-3"
+      ip: "10.0.0.3"          # Ficticio — esperamos FAIL
+
+  # Categoría: pruebas de conectividad general
+  conectividad_general:
+    - nombre: "Google DNS"
+      ip: "8.8.8.8"
+    - nombre: "Cloudflare DNS"
+      ip: "1.1.1.1"
