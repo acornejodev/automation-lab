@@ -1,134 +1,138 @@
 #!/usr/bin/env python3
 """
 Script:      aci_ping_check.py
-Descripción: Verifica conectividad básica a dispositivos de infraestructura ACI.
-             En un entorno real verificarías APICs, spines y leafs.
+Descripción: Verifica conectividad a dispositivos ACI leyendo
+             la lista desde un archivo YAML externo.
+             Versión 2.0 — datos separados de la lógica.
 Autor:       Alfonso Cornejo
 Fecha:       Abril 2026
 """
 
 # ── IMPORTACIONES ──────────────────────────────────────────────────────────────
-# "import" trae módulos (bibliotecas) que extienden lo que Python puede hacer.
-# Python tiene muchos módulos incluidos por defecto — no necesitas instalarlos.
-
 import subprocess
-# subprocess permite ejecutar comandos del sistema operativo desde Python.
-# Es como escribir un comando en la terminal, pero desde dentro de tu script.
-# Lo usaremos para ejecutar el comando "ping".
-
 import sys
-# sys da acceso a funciones del intérprete Python, como sys.exit() para
-# terminar el script con un código de error específico.
+
+# 'yaml' es un módulo externo — necesita instalarse con pip.
+# Permite leer y escribir archivos en formato YAML desde Python.
+# YAML (Yet Another Markup Language) es el formato estándar para
+# archivos de configuración en Ansible, Kubernetes y herramientas DevOps.
+import yaml
+
+# 'pathlib' proporciona la clase Path para manejar rutas de archivos
+# de forma elegante y compatible con cualquier sistema operativo.
+from pathlib import Path
 
 
-# ── FUNCIÓN 1: check_host ──────────────────────────────────────────────────────
-def check_host(hostname: str, count: int = 2) -> bool:
+# ── FUNCIÓN 1: cargar_dispositivos ────────────────────────────────────────────
+def cargar_dispositivos(ruta_yaml: str) -> list:
     """
-    Verifica si un host responde a ping.
-
-    El bloque de texto entre triple comillas se llama 'docstring'.
-    Documenta qué hace la función, sus parámetros y qué retorna.
-    Buena práctica obligatoria en código de producción.
+    Lee el archivo YAML y retorna una lista plana de dispositivos.
 
     Parámetros:
-        hostname (str): IP o nombre del host. 'str' indica el tipo esperado.
-        count (int): Paquetes ICMP a enviar. '= 2' es el valor por defecto
-                     si no se pasa este argumento al llamar la función.
+        ruta_yaml (str): Ruta al archivo YAML de configuración.
 
     Retorna:
-        bool: True si el host responde, False si no responde.
+        list: Lista de dicts, cada uno con 'nombre' e 'ip'.
+
+    Lanza:
+        FileNotFoundError: Si el archivo no existe.
+        yaml.YAMLError: Si el archivo tiene sintaxis YAML inválida.
     """
 
-    # subprocess.run() ejecuta un comando externo y espera a que termine.
-    # El primer argumento es una lista con el comando y sus argumentos.
-    # En Windows, ping usa -n para el count (en Linux/Mac es -c).
+    # Path() convierte el string en un objeto de ruta manejable
+    archivo = Path(ruta_yaml)
+
+    # Verificamos que el archivo exista antes de intentar abrirlo.
+    # Es mejor dar un error claro que dejar que Python falle con un
+    # mensaje críptico de FileNotFoundError más adelante.
+    if not archivo.exists():
+        print(f"Error: No se encontró el archivo '{ruta_yaml}'")
+        print("Verifica que el archivo exista en la misma carpeta que el script.")
+        sys.exit(1)
+
+    # 'with open()' abre el archivo y lo cierra automáticamente al terminar.
+    # Es la forma correcta de abrir archivos en Python — evita que queden
+    # abiertos si ocurre un error dentro del bloque.
+    # encoding="utf-8" especifica la codificación de caracteres.
+    with open(archivo, encoding="utf-8") as f:
+        # yaml.safe_load() lee el YAML y lo convierte en estructuras Python:
+        # - Mappings YAML (clave: valor) → diccionarios Python {}
+        # - Sequences YAML (- item)      → listas Python []
+        # - Strings, números, booleanos  → tipos Python equivalentes
+        # 'safe_load' (vs 'load') es más seguro porque no ejecuta código Python
+        # embebido en el YAML — siempre usa safe_load.
+        datos = yaml.safe_load(f)
+
+    # Construimos una lista plana juntando todas las categorías.
+    # 'datos' ahora es un dict Python que refleja la estructura del YAML:
+    # {
+    #   "aci_infrastructure": {
+    #     "apics": [{"nombre": "APIC-1", "ip": "10.10.20.14"}, ...],
+    #     "conectividad_general": [{"nombre": "Google DNS", "ip": "8.8.8.8"}, ...]
+    #   }
+    # }
+    todos = []
+    infraestructura = datos.get("aci_infrastructure", {})
+
+    # .items() retorna pares (clave, valor) del diccionario.
+    # Iteramos sobre cada categoría (apics, conectividad_general, etc.)
+    for categoria, dispositivos in infraestructura.items():
+        # 'dispositivos' es la lista de dicts de esa categoría.
+        # La extendemos a nuestra lista plana 'todos'.
+        todos.extend(dispositivos)
+
+    return todos
+
+
+# ── FUNCIÓN 2: check_host (sin cambios respecto a v1) ─────────────────────────
+def check_host(hostname: str, count: int = 2) -> bool:
+    """Verifica si un host responde a ping. Retorna True/False."""
     resultado = subprocess.run(
         ["ping", "-n", str(count), hostname],
-        # stdout=subprocess.DEVNULL descarta la salida normal del ping.
-        # Sin esto, cada ping imprimiría sus líneas en pantalla — no queremos eso.
         stdout=subprocess.DEVNULL,
-        # stderr=subprocess.DEVNULL descarta los mensajes de error del ping.
         stderr=subprocess.DEVNULL,
     )
-
-    # subprocess.run() retorna un objeto CompletedProcess.
-    # Su atributo .returncode guarda el código de salida del comando:
-    #   0  = el comando exitó sin errores (el host respondió al ping)
-    #   !0 = el comando falló (host no responde, no existe, timeout)
-    # La expresión "resultado.returncode == 0" evalúa a True o False.
     return resultado.returncode == 0
 
 
-# ── FUNCIÓN 2: verificar_dispositivos ─────────────────────────────────────────
+# ── FUNCIÓN 3: verificar_dispositivos (mejorada) ──────────────────────────────
 def verificar_dispositivos(dispositivos: list) -> None:
     """
-    Itera sobre una lista de dispositivos y verifica cada uno.
-
-    Parámetros:
-        dispositivos (list): Lista de strings con IPs o FQDNs.
-
-    Retorna:
-        None — esta función no retorna un valor, solo imprime resultados.
-              'None' es como decir "void" en otros lenguajes.
+    Recibe lista de dicts {'nombre': ..., 'ip': ...} y verifica cada uno.
     """
-
-    # Imprimimos un encabezado visual para el reporte
-    print("\n" + "=" * 55)
+    print("\n" + "=" * 60)
     print("  ACI Infrastructure Check — Verificación de conectividad")
-    print("=" * 55)
+    print("=" * 60)
 
-    # Inicializamos contadores. Empiezan en 0 y los incrementamos
-    # dentro del loop por cada resultado OK o FAIL.
     alcanzables = 0
     no_alcanzables = 0
 
-    # El loop 'for' itera sobre cada elemento de la lista.
-    # En cada iteración, 'dispositivo' toma el valor del elemento actual.
     for dispositivo in dispositivos:
+        # Ahora cada elemento es un dict, no solo un string.
+        # Accedemos a sus valores con la notación dict["clave"].
+        nombre = dispositivo["nombre"]
+        ip = dispositivo["ip"]
 
-        # Llamamos a check_host() pasando el dispositivo actual.
-        # La función retorna True o False, que usamos directamente en el if.
-        if check_host(dispositivo):
-            # f-string: las llaves {} dentro de f"..." insertan variables.
-            # :.<20 es un formato que rellena con puntos hasta 20 caracteres.
-            print(f"  [  OK  ]  {dispositivo}")
-            alcanzables += 1          # "+= 1" es equivalente a "= alcanzables + 1"
+        if check_host(ip):
+            # :.<30 rellena con puntos a la derecha hasta 30 caracteres.
+            # Esto alinea los resultados en columnas para mejor legibilidad.
+            print(f"  [ OK ]  {nombre:<28} {ip}")
+            alcanzables += 1
         else:
-            print(f"  [ FAIL ]  {dispositivo}")
+            print(f"  [FAIL]  {nombre:<28} {ip}")
             no_alcanzables += 1
 
-    # Imprimimos el resumen final
-    print("-" * 55)
-    print(f"  Resultado: {alcanzables} alcanzables | {no_alcanzables} no alcanzables")
-    print("=" * 55 + "\n")
+    print("-" * 60)
+    print(f"  Total: {alcanzables} alcanzables | {no_alcanzables} no alcanzables")
+    print("=" * 60 + "\n")
 
-    # Retornamos un código de error si hay dispositivos que no responden.
-    # Esto es importante para pipelines de CI/CD en fases futuras:
-    # un script que retorna 1 indica fallo, 0 indica éxito.
     if no_alcanzables > 0:
         sys.exit(1)
 
 
 # ── PUNTO DE ENTRADA ───────────────────────────────────────────────────────────
-# Esta condición verifica si este archivo se ejecuta DIRECTAMENTE
-# (ej: python aci_ping_check.py) versus si es importado por otro script.
-# Cuando Python ejecuta un archivo directamente, la variable especial
-# __name__ toma el valor "__main__". Si es importado, toma el nombre del módulo.
-# Es una convención estándar que SIEMPRE debes incluir en tus scripts.
 if __name__ == "__main__":
-
-    # Lista de dispositivos a verificar.
-    # En scripts de producción esto vendría de un archivo YAML o CSV externo.
-    # Por ahora lo definimos aquí directamente para concentrarnos en Git y Python.
-    dispositivos_aci = [
-        "8.8.8.8",        # Google DNS — debe responder (OK esperado)
-        "1.1.1.1",        # Cloudflare DNS — debe responder (OK esperado)
-        "192.168.1.1",    # Tu gateway local — puede variar según tu red
-        "10.0.0.1",       # IP ficticia de APIC-1 — no existe (FAIL esperado)
-        "10.0.0.2",       # IP ficticia de APIC-2 — no existe (FAIL esperado)
-        "172.16.0.1",     # Spine-1 (ficticio)
-        "172.16.0.2",     # Spine-2 (ficticio)
-    ]
-
-    # Llamamos a la función principal con nuestra lista
-    verificar_dispositivos(dispositivos_aci)
+    # Ahora leemos los dispositivos del archivo YAML en lugar de
+    # tenerlos hardcodeados. Si cambias el YAML, no tocas el código.
+    dispositivos = cargar_dispositivos("dispositivos.yaml")
+    verificar_dispositivos(dispositivos)
