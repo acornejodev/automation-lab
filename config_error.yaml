@@ -1,0 +1,4 @@
+# Este archivo fue creado por error
+configuracion_incorrecta:
+  vlan_id: 9999
+  descripcion: "esto no debería estar aquí"
